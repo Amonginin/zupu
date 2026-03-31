@@ -1,0 +1,109 @@
+:root {
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: #1f2937;
+  background: radial-gradient(circle at 10% 20%, #f5efe6, #dbeafe 70%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.shell {
+  width: min(960px, 100%);
+}
+
+.nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.nav nav {
+  display: flex;
+  gap: 12px;
+}
+
+.nav a {
+  text-decoration: none;
+  color: #0f766e;
+  font-weight: 600;
+}
+
+.card {
+  width: min(900px, 100%);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #d1d5db;
+  border-radius: 16px;
+  padding: 24px;
+  backdrop-filter: blur(6px);
+}
+
+h1 {
+  margin-top: 0;
+}
+
+.hint {
+  color: #4b5563;
+}
+
+.form,
+.ocr {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+input {
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid #9ca3af;
+  border-radius: 8px;
+}
+
+button {
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  padding: 0 14px;
+  background: #0f766e;
+  color: white;
+  cursor: pointer;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.list li {
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.result {
+  white-space: pre-wrap;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px;
+}
