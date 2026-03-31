@@ -1,24 +1,17 @@
 import { Controller, Get, Headers, Query } from '@nestjs/common';
-import { MembersService } from '../members/members.service';
+import { SearchService } from './search.service';
 
 @Controller('search')
 export class SearchController {
-  constructor(private readonly membersService: MembersService) {}
+  constructor(private readonly searchService: SearchService) {}
 
   @Get('members')
   search(
     @Headers('x-family-id') familyId = 'demo-family',
     @Query('name') name?: string,
     @Query('generation') generation?: string,
+    @Query('alias') alias?: string,
   ) {
-    return this.membersService.list(familyId).then((list) => {
-      return list.filter((member: { name: string; generation: number | null }) => {
-        const nameOk = name ? member.name.includes(name) : true;
-        const generationOk = generation
-          ? String(member.generation ?? '') === generation
-          : true;
-        return nameOk && generationOk;
-      });
-    });
+    return this.searchService.searchMembers(familyId, { name, generation, alias });
   }
 }
