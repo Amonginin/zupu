@@ -1,0 +1,180 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  admin
+  editor
+  viewer
+}
+
+enum RelationType {
+  parent_of
+  spouse_of
+}
+
+enum OcrTaskStatus {
+  pending
+  running
+  succeeded
+  failed
+  reviewed
+}
+
+enum ExportTaskStatus {
+  pending
+  running
+  succeeded
+  failed
+}
+
+model Family {
+  id          String           @id @default(cuid())
+  name        String
+  code        String           @unique
+  createdAt   DateTime         @default(now())
+  users       FamilyUserRole[]
+  members     Member[]
+  relations   Relationship[]
+  sources     SourceDocument[]
+  visibility  VisibilityPolicy[]
+  ocrTasks    OcrTask[]
+  exportTasks ExportTask[]
+  auditLogs   AuditLog[]
+}
+
+model User {
+  id           String           @id @default(cuid())
+  username     String           @unique
+  passwordHash String
+  status       String           @default("active")
+  familyRoles  FamilyUserRole[]
+  auditLogs    AuditLog[]
+}
+
+model FamilyUserRole {
+  id        String   @id @default(cuid())
+  familyId  String
+  userId    String
+  role      Role
+  createdAt DateTime @default(now())
+
+  family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([familyId, userId])
+}
+
+model Member {
+  id         String    @id @default(uuid())
+  familyId   String
+  name       String
+  generation Int?
+  alias      String?
+  gender     String?
+  isLiving   Boolean   @default(true)
+  notes      String?
+  createdAt  DateTime  @default(now())
+
+  family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  @@index([familyId, name])
+  @@index([familyId, generation])
+}
+
+model Relationship {
+  id           String       @id @default(cuid())
+  familyId     String
+  fromMemberId String
+  toMemberId   String
+  type         RelationType
+  createdAt    DateTime     @default(now())
+
+  family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  @@unique([familyId, fromMemberId, toMemberId, type])
+}
+
+model VisibilityPolicy {
+  id        String   @id @default(cuid())
+  familyId  String
+  role      Role
+  fieldName String
+  isVisible Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  @@index([familyId, role])
+}
+
+model SourceDocument {
+  id         String   @id @default(cuid())
+  familyId   String
+  objectKey  String
+  filename   String
+  mimeType   String
+  uploadedAt DateTime @default(now())
+
+  family   Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  ocrTasks OcrTask[]
+}
+
+model OcrTask {
+  id               String        @id @default(cuid())
+  familyId         String
+  sourceDocumentId String
+  status           OcrTaskStatus @default(pending)
+  errorMessage     String?
+  createdAt        DateTime      @default(now())
+
+  family         Family        @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  sourceDocument SourceDocument @relation(fields: [sourceDocumentId], references: [id], onDelete: Cascade)
+  candidates     OcrCandidate[]
+
+  @@index([familyId, status, createdAt])
+}
+
+model OcrCandidate {
+  id         String   @id @default(cuid())
+  ocrTaskId  String
+  fieldName  String
+  fieldValue String
+  confidence Float
+  bboxJson   String?
+
+  task OcrTask @relation(fields: [ocrTaskId], references: [id], onDelete: Cascade)
+}
+
+model ExportTask {
+  id          String           @id @default(cuid())
+  familyId    String
+  status      ExportTaskStatus @default(pending)
+  objectKey   String?
+  requestedBy String?
+  createdAt   DateTime         @default(now())
+
+  family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  familyId    String
+  userId      String?
+  action      String
+  targetType  String
+  targetId    String?
+  metadataJson String?
+  createdAt   DateTime @default(now())
+
+  family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([familyId, createdAt])
+  @@index([familyId, targetType, targetId])
+}
