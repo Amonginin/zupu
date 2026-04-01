@@ -1,9 +1,19 @@
 import axios from 'axios';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { FamiliesService } from '../../infra/families/families.service';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { QueueService } from '../../infra/queue/queue.service';
 import { StorageService } from '../../infra/storage/storage.service';
+import { AuditsService } from '../audits/audits.service';
+
+export interface ReviewMemberData {
+  name: string;
+  generation?: number;
+  alias?: string;
+  gender?: string;
+  isLiving?: boolean;
+  notes?: string;
+}
 
 @Injectable()
 export class OcrService {
@@ -14,6 +24,7 @@ export class OcrService {
     private readonly familiesService: FamiliesService,
     private readonly queueService: QueueService,
     private readonly storageService: StorageService,
+    private readonly auditsService: AuditsService,
   ) {}
 
   async createTask(familyCode: string, sourceDocumentId: string) {
@@ -50,13 +61,59 @@ export class OcrService {
     return task;
   }
 
-  async reviewTask(familyCode: string, id: string) {
-    await this.getTask(familyCode, id);
-    return this.prisma.ocrTask.update({
+  async getCandidates(familyCode: string, id: string) {
+    const task = await this.getTask(familyCode, id);
+    return task.candidates;
+  }
+
+  async reviewTask(familyCode: string, id: string, members?: ReviewMemberData[]) {
+    const task = await this.getTask(familyCode, id);
+    const family = await this.familiesService.resolveByCode(familyCode);
+
+    if (task.status !== 'succeeded') {
+      throw new BadRequestException('只能校对已完成识别的任务');
+    }
+
+    // 如果提供了成员数据，则创建成员记录
+    const createdMembers = [];
+    if (members && members.length > 0) {
+      for (const memberData of members) {
+        if (!memberData.name) continue;
+
+        const member = await this.prisma.member.create({
+          data: {
+            familyId: family.id,
+            name: memberData.name,
+            generation: memberData.generation,
+            alias: memberData.alias,
+            gender: memberData.gender,
+            isLiving: memberData.isLiving ?? true,
+            notes: memberData.notes,
+          },
+        });
+        createdMembers.push(member);
+
+        // 记录审计日志
+        await this.auditsService.create({
+          familyId: family.id,
+          action: 'member_created_from_ocr',
+          targetType: 'Member',
+          targetId: member.id,
+          metadata: { ocrTaskId: id, name: member.name },
+        });
+      }
+    }
+
+    const updatedTask = await this.prisma.ocrTask.update({
       where: { id },
       data: { status: 'reviewed' },
       include: { candidates: true },
     });
+
+    return {
+      ...updatedTask,
+      createdMembers,
+    };
   }
 
   async runTask(taskId: string) {

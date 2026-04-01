@@ -3,6 +3,8 @@ import { FamiliesModule } from './infra/families/families.module';
 import { PrismaModule } from './infra/prisma/prisma.module';
 import { QueueModule } from './infra/queue/queue.module';
 import { StorageModule } from './infra/storage/storage.module';
+import { AuditsModule } from './modules/audits/audits.module';
+import { AuthModule } from './modules/auth/auth.module';
 import { ExportsModule } from './modules/exports/exports.module';
 import { HealthModule } from './modules/health/health.module';
 import { MembersModule } from './modules/members/members.module';
@@ -17,6 +19,8 @@ import { UploadsModule } from './modules/uploads/uploads.module';
     QueueModule,
     StorageModule,
     HealthModule,
+    AuthModule,
+    AuditsModule,
     MembersModule,
     OcrModule,
     SearchModule,
