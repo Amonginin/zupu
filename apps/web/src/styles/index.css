@@ -1,0 +1,7 @@
+/**
+ * 族谱系统 - 样式入口
+ * 导入所有样式模块
+ */
+
+@import './variables.css';
+@import './base.css';
