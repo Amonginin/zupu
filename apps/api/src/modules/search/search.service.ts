@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
 import { FamiliesService } from '../../infra/families/families.service';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 
@@ -8,6 +7,13 @@ export interface SearchParams {
   generation?: string;
   alias?: string;
 }
+
+type MemberSearchWhere = {
+  familyId: string;
+  name?: { contains: string };
+  generation?: number;
+  alias?: { contains: string };
+};
 
 @Injectable()
 export class SearchService {
@@ -19,7 +25,7 @@ export class SearchService {
   async searchMembers(familyCode: string, params: SearchParams) {
     const family = await this.familiesService.resolveByCode(familyCode);
 
-    const where: Prisma.MemberWhereInput = {
+    const where: MemberSearchWhere = {
       familyId: family.id,
     };
 

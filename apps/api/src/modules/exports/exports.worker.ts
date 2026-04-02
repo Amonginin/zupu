@@ -1,10 +1,11 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { Worker } from 'bullmq';
 import { ExportsService } from './exports.service';
 
 @Injectable()
 export class ExportsWorker implements OnModuleInit, OnModuleDestroy {
   private worker?: Worker;
+  private readonly logger = new Logger(ExportsWorker.name);
 
   constructor(private readonly exportsService: ExportsService) {}
 
@@ -21,6 +22,17 @@ export class ExportsWorker implements OnModuleInit, OnModuleDestroy {
         },
       },
     );
+
+    this.worker.on('failed', (job, error) => {
+      this.logger.error(
+        `导出任务执行失败: jobId=${job?.id ?? 'unknown'} taskId=${String(job?.data?.taskId ?? '')}`,
+        error.stack ?? error.message,
+      );
+    });
+
+    this.worker.on('error', (error) => {
+      this.logger.error(`导出 Worker 异常: ${error.message}`, error.stack);
+    });
   }
 
   async onModuleDestroy() {
