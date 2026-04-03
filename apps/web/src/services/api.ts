@@ -124,3 +124,139 @@ export async function fetchAuditLogs(params?: { targetType?: string; limit?: num
   const { data } = await api.get('/audits', { params });
   return data;
 }
+
+// ===== v0.2 新增接口 =====
+
+// -- 族谱管理 --
+export async function createFamily(name: string, code: string) {
+  const { data } = await api.post('/families', { name, code });
+  return data;
+}
+
+export async function fetchMyFamilies() {
+  const { data } = await api.get('/families');
+  return data;
+}
+
+export async function updateFamilyAccessLevel(familyId: string, accessLevel: string) {
+  const { data } = await api.patch(`/families/${familyId}/access-level`, { accessLevel });
+  return data;
+}
+
+export async function fetchFamilyRoles(familyId: string) {
+  const { data } = await api.get(`/families/${familyId}/roles`);
+  return data;
+}
+
+export async function removeFamilyRole(familyId: string, userId: string) {
+  const { data } = await api.delete(`/families/${familyId}/roles/${userId}`);
+  return data;
+}
+
+// -- 申请审批 --
+export interface AccessRequest {
+  id: string;
+  familyId: string;
+  userId: string;
+  type: 'collaborator' | 'viewer';
+  status: 'pending' | 'approved' | 'rejected';
+  reason?: string;
+  reviewerId?: string;
+  reviewNote?: string;
+  createdAt: string;
+}
+
+export async function submitAccessRequest(familyId: string, type: string, reason?: string) {
+  const { data } = await api.post('/access-requests', { familyId, type, reason });
+  return data;
+}
+
+export async function fetchAccessRequests(status?: string) {
+  const { data } = await api.get<AccessRequest[]>('/access-requests', { params: { status } });
+  return data;
+}
+
+export async function fetchMyAccessRequests() {
+  const { data } = await api.get<AccessRequest[]>('/access-requests/mine');
+  return data;
+}
+
+export async function approveAccessRequest(id: string, note?: string) {
+  const { data } = await api.post(`/access-requests/${id}/approve`, { note });
+  return data;
+}
+
+export async function rejectAccessRequest(id: string, note: string) {
+  const { data } = await api.post(`/access-requests/${id}/reject`, { note });
+  return data;
+}
+
+// -- 修改请求 --
+export interface EditRequest {
+  id: string;
+  familyId: string;
+  userId: string;
+  editType: string;
+  editPayload: string;
+  reason?: string;
+  status: 'pending' | 'approved' | 'rejected' | 'revision_needed';
+  reviewerId?: string;
+  reviewNote?: string;
+  createdAt: string;
+}
+
+export async function submitEditRequest(editType: string, editPayload: object, reason?: string) {
+  const { data } = await api.post('/edit-requests', {
+    editType,
+    editPayload: JSON.stringify(editPayload),
+    reason,
+  });
+  return data;
+}
+
+export async function fetchEditRequests(status?: string) {
+  const { data } = await api.get<EditRequest[]>('/edit-requests', { params: { status } });
+  return data;
+}
+
+export async function approveEditRequest(id: string) {
+  const { data } = await api.post(`/edit-requests/${id}/approve`);
+  return data;
+}
+
+export async function rejectEditRequest(id: string, note: string) {
+  const { data } = await api.post(`/edit-requests/${id}/reject`, { note });
+  return data;
+}
+
+// -- 通知 --
+export interface Notification {
+  id: string;
+  userId: string;
+  type: string;
+  title: string;
+  content?: string;
+  relatedId?: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export async function fetchNotifications() {
+  const { data } = await api.get<Notification[]>('/notifications');
+  return data;
+}
+
+export async function fetchUnreadCount() {
+  const { data } = await api.get<{ count: number }>('/notifications/unread-count');
+  return data;
+}
+
+export async function markNotificationRead(id: string) {
+  const { data } = await api.patch(`/notifications/${id}/read`);
+  return data;
+}
+
+export async function markAllNotificationsRead() {
+  const { data } = await api.post('/notifications/read-all');
+  return data;
+}
