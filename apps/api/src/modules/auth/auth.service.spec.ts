@@ -46,7 +46,7 @@ describe('AuthService', () => {
       const mockUser = {
         id: 'user-1',
         username: 'testuser',
-        passwordHash: '5e884898da28047d9163bce53e8de6b10b65f71d83e36cab98f6cb82e16b4f0b', // password
+        passwordHash: '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8', // SHA256('password')
       };
       const mockFamilyRole = {
         family: { code: 'test-family' },
