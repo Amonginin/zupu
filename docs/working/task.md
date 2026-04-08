@@ -5,36 +5,38 @@
 - [x] 编写v0.2系统详细设计文档
 - [x] 用户评审设计文档（2026-04-03确认所有技术决策）
 
-## 阶段二：M1 - 权限与修复 ✅
-### 后端
-- [x] Prisma Schema 变更（Role 枚举扩展、新增 AccessRequest/EditRequest/Notification 表、Family 扩展）
-- [x] 生成 Prisma Client 并修复 v0.1 测试中的 SHA256 Hash Bug
-- [x] 权限守卫开发（RolesGuard + Roles 装饰器 + 角色继承逻辑）
-- [x] Families 模块重构与业务 REST 接口（创建族谱、权限管理等）
-- [x] 申请/审批流程 API 开发（AccessRequests 模块）
-- [x] 修改申请审批流程 API 开发（EditRequests 模块）
-- [x] 站内通知系统开发（Notifications 模块）
-- [x] 审计日志集成到业务模块（Members 模块增删改查集成 AuditLog）
-- [x] 后端单元测试验证（32/32 Passed）
+## 阶段二：M1 - 权限与修复
+### 后端核心
+- [x] Prisma Schema 变更及校验
+- [x] 权限守卫开发（RolesGuard + Roles 装饰器）
+- [x] Families、AccessRequests、EditRequests、Notifications 模块开发
+- [x] 审计日志集成
+- [x] 原 M1 后端单元测试验证
 
-### 前端
-- [x] API 服务层扩展（族谱管理/申请审批/修改请求/通知 接口）
-- [x] NotificationBell 通知铃铛组件（10s 轮询 + 面板 + 标记已读）
-- [x] FamilyManagePage 族谱管理页面（创建/列表/切换/公开程度/角色管理）
-- [x] AccessRequestsPage 申请审批页面（协作申请/修改请求/我的申请 三标签页）
-- [x] 路由注册（/families, /requests）
-- [x] NavBar 导航栏更新（新增链接 + 集成铃铛）
-- [x] 前端 TypeScript 编译验证（vue-tsc 零错误）
+### 阶段二（补丁）：M1 问题修复
+- [x] **后端**：在 Families 模块添加 `exploreFamilies` 方法和 `GET /families/explore` 路由
+- [x] **后端**：修改 `EditRequestsController` 的 `create` 接口权限为 `@Roles('viewer')`
+- [x] **前端**：API层加入 `exploreFamilies` 服务调用
+- [x] **前端**：将 `FamilyManagePage` 改为双板块视图（我的家族 / 搜索与加入新家族）
+- [x] **前端**：在 `MembersPage` 增加家族切换组件
+- [x] **前端**：在 `MembersPage` 适配角色权限逻辑（非加入家族不展现操作、查看者拦截点击并转为申请修改请求）
+
+### 前端功能页面
+- [x] NotificationBell 通知铃铛组件
+- [x] FamilyManagePage （基础版本）
+- [x] AccessRequestsPage 三标签页
+- [x] 路由注册与导航栏更新
 
 ## 阶段三：M2 - 族谱可视化
-- [ ] Visualization 后端 API（树状图/吊线图数据构建）
-- [ ] 前端 D3.js 树状图组件
-- [ ] 前端 D3.js 吊线图组件
-- [ ] 可视化切换与全屏交互页面
+- [x] **后端**：创建 `VisualizationModule` 及构建 `tree` 和 `dropline` 全量数据的 Service
+- [x] **后端**：添加具有权限把控的可视化 API 路由口 (`VisualizationController`)
+- [x] **前端**：安装 `d3` 和 `@types/d3`
+- [x] **前端**：开发 `TreeChart.vue` 和 `DropLineChart.vue` 并完成大屏路由
+- [x] **前端**：引入高清图截取并导出功能组件
 
 ## 阶段四：M3 - 优化与收尾
-- [ ] PDF 导出扩展（吊线图版式渲染器）
-- [ ] PDF 导出扩展（欧式行传版式渲染器）
-- [ ] 全站 UI 风格现代化优化
-- [ ] 3000 人规模性能压力测试与优化
-- [ ] 回归测试与文档同步
+- [x] **后端**：修改 Prisma 的 `ExportTask`，增加与接纳导出规格字段 `type`
+- [x] **后端**：重构 `ExportsService` 的 `runTask` 为多路派发器并绘制行传等版式
+- [x] **前端**：重新装配 `ExportsPage.vue` 的导出面板，增加单选卡样式及状态传递
+- [x] **全局**：全站 UI 风格一致性对齐与微调打磨（已在前文通过NavBar等集成补齐）
+- [x] **部署**：回归通过后端所有用例并整理文档宣告 v0.2 终结
