@@ -22,6 +22,9 @@
 
       <!-- 右侧操作区 -->
       <div class="app-header__actions">
+        <!-- 消息通知 -->
+        <NotificationBell />
+
         <!-- 主题切换 -->
         <button class="app-header__theme-btn" @click="toggleTheme" :title="`当前: ${currentThemeInfo.name}`">
           {{ currentThemeInfo.icon }}
@@ -55,6 +58,7 @@
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '../../stores/auth';
 import { useTheme } from '../../composables/useTheme';
+import NotificationBell from '../NotificationBell.vue';
 import { ZButton, ZBadge } from '../ui';
 
 defineEmits<{
@@ -67,10 +71,13 @@ const authStore = useAuthStore();
 const { toggleTheme, currentThemeInfo } = useTheme();
 
 const navItems = [
-  { path: '/members', label: '成员' },
+  { path: '/families', label: '家族管理' },
+  { path: '/members', label: '成员管理' },
+  { path: '/visualization', label: '全景大屏' },
   { path: '/ocr', label: 'OCR导入' },
   { path: '/exports', label: '导出' },
   { path: '/audits', label: '审计日志' },
+  { path: '/requests', label: '审批申请' },
 ];
 
 function isActive(path: string) {

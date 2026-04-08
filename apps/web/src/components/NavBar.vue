@@ -4,6 +4,7 @@
     <nav class="links">
       <RouterLink to="/families">族谱</RouterLink>
       <RouterLink to="/members">成员</RouterLink>
+      <RouterLink to="/visualization">大屏</RouterLink>
       <RouterLink to="/ocr">OCR</RouterLink>
       <RouterLink to="/exports">导出</RouterLink>
       <RouterLink to="/audits">审计</RouterLink>

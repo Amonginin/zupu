@@ -122,6 +122,39 @@
           </div>
         </div>
       </ZCard>
+
+      <!-- 搜索与加入新家族 -->
+      <ZCard class="section-card">
+        <div class="section-header">
+          <h3 class="section-title">🔍 搜索与加入新家族</h3>
+        </div>
+        
+        <div class="search-form" style="display: flex; gap: 8px; margin-bottom: 16px;">
+          <ZInput v-model="exploreKeyword" placeholder="输入家族名称或代码" @keyup.enter="onExplore" style="flex: 1;" />
+          <ZButton variant="primary" @click="onExplore" :loading="exploring">搜索</ZButton>
+        </div>
+
+        <div v-if="exploreResults.length === 0 && hasSearched" class="empty-hint">
+          未找到匹配的家族
+        </div>
+
+        <div v-else class="family-list">
+          <div v-for="f in exploreResults" :key="f.id" class="family-item">
+            <div class="family-item__info">
+              <div class="family-item__name">{{ f.name }}</div>
+              <div class="family-item__meta" style="font-size: 13px; color: #666; margin-top: 4px;">
+                <span>代码: {{ f.code }}</span> | 
+                <span>创建者: {{ f.creatorName }}</span> | 
+                <span>成员数: {{ f.memberCount }}</span>
+              </div>
+            </div>
+            <div class="family-item__actions">
+              <ZButton size="sm" variant="secondary" @click="onApplyAccess(f.id, 'viewer')">申请查看</ZButton>
+              <ZButton size="sm" variant="secondary" @click="onApplyAccess(f.id, 'collaborator')">申请协作</ZButton>
+            </div>
+          </div>
+        </div>
+      </ZCard>
     </div>
   </AppLayout>
 </template>
@@ -137,6 +170,8 @@ import {
   updateFamilyAccessLevel,
   fetchFamilyRoles,
   removeFamilyRole,
+  exploreFamilies,
+  submitAccessRequest,
 } from '../services/api';
 
 const authStore = useAuthStore();
@@ -259,6 +294,36 @@ async function onRemoveRole(roleItem: any) {
     familyRoles.value = familyRoles.value.filter((r) => r.id !== roleItem.id);
   } catch (e: any) {
     alert(e.response?.data?.message || '移除失败');
+  }
+}
+
+// ====== 探索家族 ======
+const exploreKeyword = ref('');
+const exploring = ref(false);
+const exploreResults = ref<any[]>([]);
+const hasSearched = ref(false);
+
+async function onExplore() {
+  if (!exploreKeyword.value.trim()) return;
+  exploring.value = true;
+  hasSearched.value = true;
+  try {
+    exploreResults.value = await exploreFamilies(exploreKeyword.value);
+  } catch (e: any) {
+    alert(e.response?.data?.message || '搜索失败');
+  } finally {
+    exploring.value = false;
+  }
+}
+
+async function onApplyAccess(familyId: string, roleType: 'viewer' | 'collaborator') {
+  const reason = prompt('请输入申请理由：');
+  if (reason === null) return;
+  try {
+    await submitAccessRequest(familyId, roleType, reason);
+    alert('申请提交成功，请等待管理员审批');
+  } catch (e: any) {
+    alert(e.response?.data?.message || '申请提交失败');
   }
 }
 

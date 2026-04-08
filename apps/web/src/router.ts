@@ -8,6 +8,7 @@ import AuditsPage from './pages/AuditsPage.vue';
 // v0.2 新增页面
 import FamilyManagePage from './pages/FamilyManagePage.vue';
 import AccessRequestsPage from './pages/AccessRequestsPage.vue';
+import VisualizationPage from './pages/VisualizationPage.vue';
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -17,6 +18,7 @@ export const router = createRouter({
     { path: '/families', component: FamilyManagePage },
     { path: '/members', component: MembersPage },
     { path: '/members/:id', component: MemberDetailPage },
+    { path: '/visualization', component: VisualizationPage },
     { path: '/ocr', component: OcrPage },
     { path: '/exports', component: ExportsPage },
     { path: '/audits', component: AuditsPage },

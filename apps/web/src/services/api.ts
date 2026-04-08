@@ -110,8 +110,8 @@ export async function uploadSourceFile(file: File) {
   return data;
 }
 
-export async function createExportTask() {
-  const { data } = await api.post('/exports');
+export async function createExportTask(type: string = 'quick_table') {
+  const { data } = await api.post('/exports', { type });
   return data;
 }
 
@@ -135,6 +135,13 @@ export async function createFamily(name: string, code: string) {
 
 export async function fetchMyFamilies() {
   const { data } = await api.get('/families');
+  return data;
+}
+
+export async function exploreFamilies(keyword?: string) {
+  const { data } = await api.get('/families/explore', {
+    params: { q: keyword },
+  });
   return data;
 }
 
@@ -229,7 +236,21 @@ export async function rejectEditRequest(id: string, note: string) {
   return data;
 }
 
-// -- 通知 --
+// -- 可视化 --
+export async function fetchTreeData(familyId: string) {
+  const { data } = await api.get('/visualization/tree', {
+    headers: { 'x-family-id': familyId },
+  });
+  return data;
+}
+
+export async function fetchDropLineData(familyId: string) {
+  const { data } = await api.get('/visualization/dropline', {
+    headers: { 'x-family-id': familyId },
+  });
+  return data;
+}
+
 export interface Notification {
   id: string;
   userId: string;

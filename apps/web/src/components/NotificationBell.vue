@@ -1,7 +1,7 @@
 <template>
-  <div class="notification-bell" @click="togglePanel">
+  <div class="notification-bell">
     <!-- 铃铛图标 -->
-    <button class="bell-btn" :class="{ 'bell-btn--active': showPanel }">
+    <button class="bell-btn" :class="{ 'bell-btn--active': showPanel }" @click="togglePanel">
       <svg class="bell-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
         <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
@@ -14,7 +14,7 @@
 
     <!-- 通知面板 -->
     <Transition name="panel">
-      <div v-if="showPanel" class="notification-panel">
+      <div v-if="showPanel" class="notification-panel" @click.stop>
         <div class="panel-header">
           <h3 class="panel-title">通知</h3>
           <button v-if="unreadCount > 0" class="mark-all-btn" @click.stop="onMarkAllRead">
@@ -57,6 +57,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
+import { useRouter } from 'vue-router';
 import {
   fetchNotifications,
   fetchUnreadCount,
@@ -65,6 +66,7 @@ import {
   type Notification,
 } from '../services/api';
 
+const router = useRouter();
 const showPanel = ref(false);
 const unreadCount = ref(0);
 const notifications = ref<Notification[]>([]);
@@ -104,17 +106,33 @@ async function pollUnread() {
 // 点击通知项
 async function onClickItem(item: Notification) {
   if (!item.isRead) {
-    await markNotificationRead(item.id);
-    item.isRead = true;
-    unreadCount.value = Math.max(0, unreadCount.value - 1);
+    try {
+      await markNotificationRead(item.id);
+      item.isRead = true;
+      unreadCount.value = Math.max(0, unreadCount.value - 1);
+    } catch {
+      // ignore
+    }
+  }
+  
+  // 处理跳转逻辑
+  showPanel.value = false;
+  
+  // 审批/申请相关通知跳转到审批页面
+  if (item.type && (item.type.includes('request') || item.type.includes('approved') || item.type.includes('rejected'))) {
+    router.push('/requests');
   }
 }
 
 // 全部标记已读
 async function onMarkAllRead() {
-  await markAllNotificationsRead();
-  notifications.value.forEach((n) => (n.isRead = true));
-  unreadCount.value = 0;
+  try {
+    await markAllNotificationsRead();
+    notifications.value.forEach((n) => (n.isRead = true));
+    unreadCount.value = 0;
+  } catch {
+    // ignore
+  }
 }
 
 // 通知类型对应图标
