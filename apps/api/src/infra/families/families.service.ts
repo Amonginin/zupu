@@ -165,4 +165,56 @@ export class FamiliesService {
     }
     return family;
   }
+
+  /**
+   * v0.2: 探索与搜索系统内公开的族谱（未加入的）
+   */
+  async exploreFamilies(userId: string, keyword?: string) {
+    // 基础条件：非 public/approval_required 等非 private 状态。但在schema中我们只定义了 string
+    // 这里我们允许 'public' 和 'approval_required' 可被检索
+    const whereCondition: any = {
+      accessLevel: { in: ['public', 'approval_required'] },
+    };
+
+    if (keyword) {
+      whereCondition.OR = [
+        { name: { contains: keyword, mode: 'insensitive' } },
+        { code: { contains: keyword, mode: 'insensitive' } },
+      ];
+    }
+
+    // 排除用户已加入的族谱
+    const userJoinedRoles = await this.prisma.familyUserRole.findMany({
+      where: { userId },
+      select: { familyId: true },
+    });
+    const joinedFamilyIds = userJoinedRoles.map((r) => r.familyId);
+
+    if (joinedFamilyIds.length > 0) {
+      whereCondition.id = { notIn: joinedFamilyIds };
+    }
+
+    const families = await this.prisma.family.findMany({
+      where: whereCondition,
+      include: {
+        users: {
+          where: { role: 'creator' },
+          include: { user: { select: { username: true } } },
+        },
+        _count: { select: { members: true } },
+      },
+      take: 50,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return families.map((f) => ({
+      id: f.id,
+      name: f.name,
+      code: f.code,
+      accessLevel: f.accessLevel,
+      createdAt: f.createdAt,
+      creatorName: f.users?.[0]?.user?.username || '未知',
+      memberCount: f._count?.members || 0,
+    }));
+  }
 }

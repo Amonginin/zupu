@@ -15,6 +15,7 @@ import { UploadsModule } from './modules/uploads/uploads.module';
 import { AccessRequestsModule } from './modules/access-requests/access-requests.module';
 import { EditRequestsModule } from './modules/edit-requests/edit-requests.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { VisualizationModule } from './modules/visualization/visualization.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     AccessRequestsModule,
     EditRequestsModule,
     NotificationsModule,
+    VisualizationModule,
   ],
 })
 export class AppModule {}

@@ -25,7 +25,7 @@ export class EditRequestsController {
   /**
    * 提交修改请求 - 仅协作者
    */
-  @Roles('collaborator')
+  @Roles('viewer')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Post()
   async create(

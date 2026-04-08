@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -25,6 +26,15 @@ export class FamiliesController {
   @Post()
   async create(@Req() req: any, @Body() body: { name: string; code: string }) {
     return this.familiesService.createFamily(req.user.sub, body.name, body.code);
+  }
+
+  /**
+   * 探索系统内公开族谱
+   */
+  @UseGuards(JwtAuthGuard)
+  @Get('explore')
+  async explore(@Req() req: any, @Query('q') query?: string) {
+    return this.familiesService.exploreFamilies(req.user.sub, query);
   }
 
   /**
