@@ -76,10 +76,13 @@ const authStore = useAuthStore();
 const { theme, themes, setTheme } = useTheme();
 
 const navItems = [
+  { path: '/families', label: '家族管理', icon: '🏠' },
   { path: '/members', label: '成员管理', icon: '👥' },
+  { path: '/visualization', label: '全景大屏', icon: '🗺️' },
   { path: '/ocr', label: 'OCR导入', icon: '📷' },
   { path: '/exports', label: '导出', icon: '📄' },
   { path: '/audits', label: '审计日志', icon: '📋' },
+  { path: '/requests', label: '审批申请', icon: '🔔' },
 ];
 
 function isActive(path: string) {

@@ -5,17 +5,24 @@ import MemberDetailPage from './pages/MemberDetailPage.vue';
 import OcrPage from './pages/OcrPage.vue';
 import ExportsPage from './pages/ExportsPage.vue';
 import AuditsPage from './pages/AuditsPage.vue';
+// v0.2 新增页面
+import FamilyManagePage from './pages/FamilyManagePage.vue';
+import AccessRequestsPage from './pages/AccessRequestsPage.vue';
+import VisualizationPage from './pages/VisualizationPage.vue';
 
 export const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/', redirect: '/members' },
     { path: '/login', component: LoginPage },
+    { path: '/families', component: FamilyManagePage },
     { path: '/members', component: MembersPage },
     { path: '/members/:id', component: MemberDetailPage },
+    { path: '/visualization', component: VisualizationPage },
     { path: '/ocr', component: OcrPage },
     { path: '/exports', component: ExportsPage },
     { path: '/audits', component: AuditsPage },
+    { path: '/requests', component: AccessRequestsPage },
   ],
 });
 

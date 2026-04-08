@@ -11,6 +11,11 @@ import { MembersModule } from './modules/members/members.module';
 import { OcrModule } from './modules/ocr/ocr.module';
 import { SearchModule } from './modules/search/search.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
+// v0.2 新增模块
+import { AccessRequestsModule } from './modules/access-requests/access-requests.module';
+import { EditRequestsModule } from './modules/edit-requests/edit-requests.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { VisualizationModule } from './modules/visualization/visualization.module';
 
 @Module({
   imports: [
@@ -26,6 +31,11 @@ import { UploadsModule } from './modules/uploads/uploads.module';
     SearchModule,
     UploadsModule,
     ExportsModule,
+    // v0.2 新增
+    AccessRequestsModule,
+    EditRequestsModule,
+    NotificationsModule,
+    VisualizationModule,
   ],
 })
 export class AppModule {}

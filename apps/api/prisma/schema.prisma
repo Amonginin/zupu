@@ -7,8 +7,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ===== v0.2: 扩展后的角色枚举 =====
+// admin: 应用管理员（系统级）
+// creator: 族谱创建者（用户创建族谱时自动获得）
+// collaborator: 族谱协作者（需申请审批）
+// editor: [已废弃，保留兼容旧数据] → 迁移为 collaborator
+// viewer: 普通查看者
 enum Role {
   admin
+  creator
+  collaborator
   editor
   viewer
 }
@@ -33,10 +41,34 @@ enum ExportTaskStatus {
   failed
 }
 
+// ===== v0.2 新增枚举 =====
+
+enum AccessRequestStatus {
+  pending
+  approved
+  rejected
+}
+
+enum AccessRequestType {
+  collaborator
+  viewer
+}
+
+enum EditRequestStatus {
+  pending
+  approved
+  rejected
+  revision_needed
+}
+
+// ===== 数据模型 =====
+
 model Family {
   id          String           @id @default(cuid())
   name        String
   code        String           @unique
+  creatorId   String?          // v0.2: 创建者用户ID
+  accessLevel String           @default("approval_required") // v0.2: "public" | "approval_required"
   createdAt   DateTime         @default(now())
   users       FamilyUserRole[]
   members     Member[]
@@ -154,6 +186,7 @@ model OcrCandidate {
 model ExportTask {
   id          String           @id @default(cuid())
   familyId    String
+  type        String           @default("quick_table") // v0.2: "quick_table" | "drop_line" | "biography"
   status      ExportTaskStatus @default(pending)
   objectKey   String?
   requestedBy String?
@@ -177,4 +210,56 @@ model AuditLog {
 
   @@index([familyId, createdAt])
   @@index([familyId, targetType, targetId])
+}
+
+// ===== v0.2 新增模型 =====
+
+// 协作者/查看者申请记录
+model AccessRequest {
+  id          String              @id @default(cuid())
+  familyId    String
+  userId      String              // 申请者
+  type        AccessRequestType   // 申请成为协作者或查看者
+  status      AccessRequestStatus @default(pending)
+  reason      String?             // 申请理由
+  reviewerId  String?             // 审批人ID
+  reviewNote  String?             // 审批备注
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([familyId, status])
+  @@index([userId])
+}
+
+// 协作者修改审批记录
+model EditRequest {
+  id            String            @id @default(cuid())
+  familyId      String
+  userId        String            // 提交修改的协作者
+  editType      String            // member_create/member_update/member_delete/relation_create/relation_delete
+  editPayload   String            // JSON格式的修改内容
+  reason        String?           // 修改原因
+  status        EditRequestStatus @default(pending)
+  reviewerId    String?
+  reviewNote    String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([familyId, status])
+  @@index([userId])
+}
+
+// 站内通知
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String   // 接收通知的用户
+  type        String   // access_request/access_approved/access_rejected/edit_request/edit_approved/edit_rejected
+  title       String
+  content     String?
+  relatedId   String?  // 关联的请求ID
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
 }

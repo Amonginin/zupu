@@ -2,12 +2,14 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { CreateMemberDto, CreateRelationDto, UpdateMemberDto } from './dto';
 import { FamiliesService } from '../../infra/families/families.service';
 import { PrismaService } from '../../infra/prisma/prisma.service';
+import { AuditsService } from '../audits/audits.service';
 
 @Injectable()
 export class MembersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly familiesService: FamiliesService,
+    private readonly auditsService: AuditsService,
   ) {}
 
   async list(familyCode: string) {
@@ -29,7 +31,7 @@ export class MembersService {
     return member;
   }
 
-  async create(familyCode: string, dto: CreateMemberDto) {
+  async create(familyCode: string, dto: CreateMemberDto, userId?: string) {
     const family = await this.familiesService.resolveByCode(familyCode);
 
     // 去重提示：检查同名同代人
@@ -53,13 +55,23 @@ export class MembersService {
       },
     });
 
+    // v0.2: 记录审计日志
+    await this.auditsService.create({
+      familyId: family.id,
+      userId,
+      action: 'member_created',
+      targetType: 'Member',
+      targetId: member.id,
+      metadata: { name: dto.name, generation: dto.generation },
+    });
+
     return {
       ...member,
       warning: duplicates.length > 0 ? `存在 ${duplicates.length} 个同名同代成员，请确认是否重复` : undefined,
     };
   }
 
-  async update(familyCode: string, id: string, dto: UpdateMemberDto) {
+  async update(familyCode: string, id: string, dto: UpdateMemberDto, userId?: string) {
     const family = await this.familiesService.resolveByCode(familyCode);
     const member = await this.prisma.member.findFirst({
       where: { id, familyId: family.id },
@@ -68,13 +80,25 @@ export class MembersService {
       throw new NotFoundException('成员不存在');
     }
 
-    return this.prisma.member.update({
+    const updated = await this.prisma.member.update({
       where: { id },
       data: dto,
     });
+
+    // v0.2: 记录审计日志
+    await this.auditsService.create({
+      familyId: family.id,
+      userId,
+      action: 'member_updated',
+      targetType: 'Member',
+      targetId: id,
+      metadata: { changes: dto },
+    });
+
+    return updated;
   }
 
-  async delete(familyCode: string, id: string) {
+  async delete(familyCode: string, id: string, userId?: string) {
     const family = await this.familiesService.resolveByCode(familyCode);
     const member = await this.prisma.member.findFirst({
       where: { id, familyId: family.id },
@@ -91,6 +115,16 @@ export class MembersService {
     });
 
     await this.prisma.member.delete({ where: { id } });
+
+    // v0.2: 记录审计日志
+    await this.auditsService.create({
+      familyId: family.id,
+      userId,
+      action: 'member_deleted',
+      targetType: 'Member',
+      targetId: id,
+      metadata: { name: member.name },
+    });
 
     return { deleted: true, id };
   }
@@ -137,7 +171,7 @@ export class MembersService {
     };
   }
 
-  async createRelation(familyCode: string, fromMemberId: string, dto: CreateRelationDto) {
+  async createRelation(familyCode: string, fromMemberId: string, dto: CreateRelationDto, userId?: string) {
     const family = await this.familiesService.resolveByCode(familyCode);
 
     const fromMember = await this.prisma.member.findFirst({
@@ -171,7 +205,7 @@ export class MembersService {
       throw new BadRequestException('关系已存在');
     }
 
-    return this.prisma.relationship.create({
+    const relation = await this.prisma.relationship.create({
       data: {
         familyId: family.id,
         fromMemberId,
@@ -179,5 +213,21 @@ export class MembersService {
         type: dto.type,
       },
     });
+
+    // v0.2: 记录审计日志
+    await this.auditsService.create({
+      familyId: family.id,
+      userId,
+      action: 'relation_created',
+      targetType: 'Relationship',
+      targetId: relation.id,
+      metadata: {
+        from: fromMember.name,
+        to: toMember.name,
+        type: dto.type,
+      },
+    });
+
+    return relation;
   }
 }

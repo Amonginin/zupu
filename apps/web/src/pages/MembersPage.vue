@@ -7,131 +7,182 @@
         <p class="members-page__desc">管理族谱中的所有成员信息</p>
       </header>
 
-      <!-- 统计卡片 -->
-      <div class="stats-grid">
-        <div class="stat-card">
-          <span class="stat-card__value">{{ membersStore.members.length }}</span>
-          <span class="stat-card__label">总人数</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-card__value">{{ livingCount }}</span>
-          <span class="stat-card__label">在世</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-card__value">{{ generationCount }}</span>
-          <span class="stat-card__label">世代</span>
-        </div>
-      </div>
-
-      <!-- 搜索和新增区域 -->
-      <ZCard class="action-card">
-        <!-- 搜索表单 -->
-        <div class="search-section">
-          <h3 class="section-title">🔍 搜索成员</h3>
-          <div class="search-form">
-            <ZInput v-model="search.name" placeholder="姓名" />
-            <ZInput v-model="search.generation" placeholder="世代" type="number" />
-            <ZInput v-model="search.alias" placeholder="别名" />
-            <ZButton variant="primary" @click="onSearch">搜索</ZButton>
-            <ZButton variant="ghost" @click="onClearSearch">清空</ZButton>
-          </div>
-        </div>
-
-        <!-- 新增成员表单 -->
-        <div class="add-section">
-          <h3 class="section-title">➕ 新增成员</h3>
-          <form class="add-form" @submit.prevent="onCreateMember">
-            <ZInput v-model="form.name" placeholder="成员姓名" required />
-            <ZInput v-model.number="form.generation" placeholder="世代" type="number" />
-            <ZInput v-model="form.alias" placeholder="别名" />
-            <label class="checkbox-label">
-              <input v-model="form.isLiving" type="checkbox" />
-              <span>在世</span>
-            </label>
-            <ZButton type="submit" variant="accent">新增</ZButton>
-          </form>
+      <!-- 家族切换区域 -->
+      <ZCard v-if="hasFamilies" class="family-switcher">
+        <div style="display: flex; align-items: center; gap: 16px;">
+          <h3 class="section-title" style="margin: 0; font-size: 16px;">当前管理的族谱：</h3>
+          <ZSelect 
+            v-model="currentFamilyIdRef" 
+            :options="familyOptions" 
+            @change="onSwitchFamily"
+            style="min-width: 200px"
+          />
         </div>
       </ZCard>
 
-      <!-- 加载状态 -->
-      <div v-if="membersStore.loading" class="loading-state">
-        <ZLoading text="加载中..." />
-      </div>
+      <!-- 未加入家族提示 -->
+      <ZCard v-if="!hasFamilies" class="empty-family-hint">
+        <h3 style="margin: 0 0 8px;">您尚未加入任何族谱</h3>
+        <p style="color: #666; margin: 0 0 16px;">请前往「族谱管理」页面创建一个新族谱，或搜索并申请加入其他族谱。</p>
+        <ZButton variant="primary" @click="router.push('/families')">前往族谱管理</ZButton>
+      </ZCard>
 
-      <!-- 错误提示 -->
-      <div v-if="membersStore.error" class="error-state">
-        {{ membersStore.error }}
-      </div>
+      <template v-else>
+        <!-- 统计卡片 -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="stat-card__value">{{ membersStore.members.length }}</span>
+            <span class="stat-card__label">总人数</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-card__value">{{ livingCount }}</span>
+            <span class="stat-card__label">在世</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-card__value">{{ generationCount }}</span>
+            <span class="stat-card__label">世代</span>
+          </div>
+        </div>
 
-      <!-- 成员列表 -->
-      <div class="members-list">
-        <TransitionGroup name="list">
-          <ZCard
-            v-for="item in membersStore.members"
-            :key="item.id"
-            class="member-card"
-            hoverable
-            @click="viewDetail(item.id)"
-          >
-            <div class="member-card__content">
-              <!-- 头像 -->
-              <div class="member-card__avatar">
-                {{ item.name.charAt(0) }}
-              </div>
+        <!-- 搜索和新增区域 -->
+        <ZCard class="action-card">
+          <!-- 搜索表单 -->
+          <div class="search-section">
+            <h3 class="section-title">🔍 搜索成员</h3>
+            <div class="search-form">
+              <ZInput v-model="search.name" placeholder="姓名" />
+              <ZInput v-model="search.generation" placeholder="世代" type="number" />
+              <ZInput v-model="search.alias" placeholder="别名" />
+              <ZButton variant="primary" @click="onSearch">搜索</ZButton>
+              <ZButton variant="ghost" @click="onClearSearch">清空</ZButton>
+            </div>
+          </div>
 
-              <!-- 信息 -->
-              <div class="member-card__info">
-                <h4 class="member-card__name">{{ item.name }}</h4>
-                <div class="member-card__meta">
-                  <ZBadge variant="info" size="sm">
-                    {{ item.generation ?? '-' }}世
-                  </ZBadge>
-                  <span v-if="item.alias" class="member-card__alias">
-                    {{ item.alias }}
-                  </span>
+          <!-- 新增成员表单 -->
+          <div class="add-section">
+            <h3 class="section-title">➕ 新增成员</h3>
+            <form class="add-form" @submit.prevent="onCreateMember">
+              <ZInput v-model="form.name" placeholder="成员姓名" required />
+              <ZInput v-model.number="form.generation" placeholder="世代" type="number" />
+              <ZInput v-model="form.alias" placeholder="别名" />
+              <label class="checkbox-label">
+                <input v-model="form.isLiving" type="checkbox" />
+                <span>在世</span>
+              </label>
+              <ZButton type="submit" variant="accent">新增</ZButton>
+            </form>
+          </div>
+        </ZCard>
+
+        <!-- 加载状态 -->
+        <div v-if="membersStore.loading" class="loading-state">
+          <ZLoading text="加载中..." />
+        </div>
+
+        <!-- 错误提示 -->
+        <div v-if="membersStore.error" class="error-state">
+          {{ membersStore.error }}
+        </div>
+
+        <!-- 成员列表 -->
+        <div class="members-list">
+          <TransitionGroup name="list">
+            <ZCard
+              v-for="item in membersStore.members"
+              :key="item.id"
+              class="member-card"
+              hoverable
+              @click="viewDetail(item.id)"
+            >
+              <div class="member-card__content">
+                <!-- 头像 -->
+                <div class="member-card__avatar">
+                  {{ item.name.charAt(0) }}
+                </div>
+
+                <!-- 信息 -->
+                <div class="member-card__info">
+                  <h4 class="member-card__name">{{ item.name }}</h4>
+                  <div class="member-card__meta">
+                    <ZBadge variant="info" size="sm">
+                      {{ item.generation ?? '-' }}世
+                    </ZBadge>
+                    <span v-if="item.alias" class="member-card__alias">
+                      {{ item.alias }}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- 状态 -->
+                <ZBadge :variant="item.isLiving ? 'success' : 'default'" size="sm">
+                  {{ item.isLiving ? '在世' : '已故' }}
+                </ZBadge>
+
+                <!-- 操作 -->
+                <div class="member-card__actions" @click.stop>
+                  <ZButton variant="ghost" size="sm" @click="viewDetail(item.id)">
+                    详情
+                  </ZButton>
+                  <ZButton variant="danger" size="sm" @click="onDelete(item.id)">
+                    删除
+                  </ZButton>
                 </div>
               </div>
+            </ZCard>
+          </TransitionGroup>
 
-              <!-- 状态 -->
-              <ZBadge :variant="item.isLiving ? 'success' : 'default'" size="sm">
-                {{ item.isLiving ? '在世' : '已故' }}
-              </ZBadge>
-
-              <!-- 操作 -->
-              <div class="member-card__actions" @click.stop>
-                <ZButton variant="ghost" size="sm" @click="viewDetail(item.id)">
-                  详情
-                </ZButton>
-                <ZButton variant="danger" size="sm" @click="onDelete(item.id)">
-                  删除
-                </ZButton>
-              </div>
-            </div>
-          </ZCard>
-        </TransitionGroup>
-
-        <!-- 空状态 -->
-        <div
-          v-if="membersStore.members.length === 0 && !membersStore.loading"
-          class="empty-state"
-        >
-          <p>暂无成员数据</p>
-          <p class="empty-state__hint">请使用上方表单添加第一位成员</p>
+          <!-- 空状态 -->
+          <div
+            v-if="membersStore.members.length === 0 && !membersStore.loading"
+            class="empty-state"
+          >
+            <p>暂无成员数据</p>
+            <p class="empty-state__hint">请使用上方表单添加第一位成员</p>
+          </div>
         </div>
-      </div>
+      </template>
     </div>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, computed } from 'vue';
+import { onMounted, reactive, computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useMembersStore } from '../stores/members';
+import { useAuthStore } from '../stores/auth';
 import { AppLayout } from '../components/layout';
-import { ZCard, ZInput, ZButton, ZBadge, ZLoading } from '../components/ui';
+import { ZCard, ZInput, ZButton, ZBadge, ZLoading, ZSelect } from '../components/ui';
+import { submitEditRequest } from '../services/api';
 
 const router = useRouter();
 const membersStore = useMembersStore();
+const authStore = useAuthStore();
+
+// 家族列表与权限
+const hasFamilies = computed(() => authStore.families && authStore.families.length > 0);
+const familyOptions = computed(() => 
+  authStore.families.map(f => ({ label: f.familyName, value: f.familyCode }))
+);
+
+// 使用 ref 绑定 Select，但需要与 store 保持同步
+const currentFamilyIdRef = ref<string | undefined>(authStore.currentFamilyId || undefined);
+
+watch(() => authStore.currentFamilyId, (newId) => {
+  if (newId) {
+    currentFamilyIdRef.value = newId;
+    membersStore.loadMembers();
+  }
+}, { immediate: true });
+
+const currentRole = computed(() => authStore.role);
+const canDirectEdit = computed(() => ['creator', 'admin', 'collaborator', 'editor'].includes(currentRole.value));
+
+function onSwitchFamily() {
+  if (currentFamilyIdRef.value) {
+    authStore.switchFamily(currentFamilyIdRef.value);
+    membersStore.loadMembers();
+  }
+}
 
 const form = reactive({
   name: '',
@@ -176,6 +227,26 @@ function onClearSearch() {
 }
 
 async function onCreateMember() {
+  if (!canDirectEdit.value) {
+    const reason = prompt('您当前的权限无法直接新增成员。请填写申请理由，您的操作将提交为修改请求给管理员审批：');
+    if (reason === null) return;
+    try {
+      await submitEditRequest('member_create', {
+        name: form.name,
+        generation: form.generation,
+        alias: form.alias || undefined,
+        isLiving: form.isLiving,
+      }, reason);
+      alert('已提交成员新增请求，等待审批！');
+      form.name = '';
+      form.generation = undefined;
+      form.alias = '';
+    } catch (e: any) {
+      alert(e.response?.data?.message || '请求提交失败');
+    }
+    return;
+  }
+
   try {
     await membersStore.addMember({
       name: form.name,
@@ -192,6 +263,18 @@ async function onCreateMember() {
 }
 
 async function onDelete(id: string) {
+  if (!canDirectEdit.value) {
+    const reason = prompt('您当前的权限无法直接删除成员。请填写申请理由，您的操作将提交为修改请求给管理员审批：');
+    if (reason === null) return;
+    try {
+      await submitEditRequest('member_delete', { memberId: id }, reason);
+      alert('已提交成员删除请求，等待审批！');
+    } catch (e: any) {
+      alert(e.response?.data?.message || '请求提交失败');
+    }
+    return;
+  }
+
   if (confirm('确定要删除此成员吗？')) {
     await membersStore.removeMember(id);
   }
@@ -201,7 +284,12 @@ function viewDetail(id: string) {
   router.push(`/members/${id}`);
 }
 
-onMounted(() => membersStore.loadMembers());
+onMounted(async () => {
+  await authStore.loadUserInfo();
+  if (authStore.currentFamilyId) {
+    membersStore.loadMembers();
+  }
+});
 </script>
 
 <style scoped>

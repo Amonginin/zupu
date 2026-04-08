@@ -4,25 +4,49 @@
       <!-- 页面标题 -->
       <header class="exports-page__header">
         <h1 class="exports-page__title">PDF 导出</h1>
-        <p class="exports-page__desc">将族谱数据导出为精美的PDF文档</p>
+        <p class="exports-page__desc">提供多种体裁的家谱、族谱高清打印文件导出</p>
       </header>
 
       <ZCard decorated>
         <!-- 导出选项 -->
         <div class="export-section">
-          <h3 class="section-title">📄 创建导出任务</h3>
+          <h3 class="section-title">📄 选择导出规格</h3>
           
           <div class="export-options">
-            <div class="export-option export-option--selected">
+            <div 
+              class="export-option"
+              :class="{ 'export-option--selected': exportType === 'quick_table' }"
+              @click="exportType = 'quick_table'"
+            >
+              <span class="export-option__icon">📊</span>
+              <span class="export-option__name">基础花名册</span>
+              <span class="export-option__desc">适合粗略人员盘点与档案管理</span>
+            </div>
+
+            <div 
+              class="export-option"
+              :class="{ 'export-option--selected': exportType === 'drop_line' }"
+              @click="exportType = 'drop_line'"
+            >
+              <span class="export-option__icon">🗺️</span>
+              <span class="export-option__name">传统吊线图</span>
+              <span class="export-option__desc">直观的父子上下承接世代谱系图</span>
+            </div>
+
+            <div 
+              class="export-option"
+              :class="{ 'export-option--selected': exportType === 'biography' }"
+              @click="exportType = 'biography'"
+            >
               <span class="export-option__icon">📜</span>
-              <span class="export-option__name">标准族谱</span>
-              <span class="export-option__desc">包含所有成员及关系</span>
+              <span class="export-option__name">欧式行传体</span>
+              <span class="export-option__desc">逐代排记配偶子女及生平小传的书面体</span>
             </div>
           </div>
 
           <div class="export-actions">
             <ZButton variant="primary" size="lg" @click="onCreateExport">
-              创建导出任务
+              🚀 提交导出任务
             </ZButton>
             <ZButton
               variant="secondary"
@@ -30,7 +54,7 @@
               :disabled="!exportTaskId"
               @click="onRefresh"
             >
-              刷新导出状态
+              🔄 刷新打包状态
             </ZButton>
           </div>
         </div>
@@ -41,17 +65,16 @@
             <span class="download-card__icon">✅</span>
             <div class="download-card__info">
               <h4 class="download-card__title">导出完成</h4>
-              <p class="download-card__desc">您的族谱PDF已准备就绪</p>
+              <p class="download-card__desc">您的族谱文档（规格: {{ lastSuccessfulType }}）已准备就绪</p>
             </div>
             <ZButton variant="accent" @click="openDownload">
-              下载文件
+              ⬇️ 下载 PDF 文件
             </ZButton>
           </div>
         </div>
 
-        <!-- 结果展示 -->
         <div v-if="result" class="result-section">
-          <h4 class="result-section__title">任务详情</h4>
+          <h4 class="result-section__title">任务追踪状态日志</h4>
           <pre class="result-section__content">{{ result }}</pre>
         </div>
       </ZCard>
@@ -65,20 +88,28 @@ import { createExportTask, fetchExportTask } from '../services/api';
 import { AppLayout } from '../components/layout';
 import { ZCard, ZButton } from '../components/ui';
 
+const exportType = ref<'quick_table' | 'drop_line' | 'biography'>('quick_table');
+const lastSuccessfulType = ref('');
 const exportTaskId = ref('');
 const downloadUrl = ref('');
 const result = ref('');
 
 async function onCreateExport() {
-  const task = await createExportTask();
+  downloadUrl.value = '';
+  // 传入所选规格
+  const task = await createExportTask(exportType.value);
   exportTaskId.value = task.id;
   result.value = JSON.stringify(task, null, 2);
 }
 
 async function onRefresh() {
+  if (!exportTaskId.value) return;
   const task = await fetchExportTask(exportTaskId.value);
   result.value = JSON.stringify(task, null, 2);
   downloadUrl.value = task.downloadUrl ?? '';
+  if (task.downloadUrl) {
+     lastSuccessfulType.value = task.type || 'quick_table';
+  }
 }
 
 function openDownload() {
@@ -153,6 +184,8 @@ function openDownload() {
 .export-option--selected {
   border-color: var(--color-primary);
   background: var(--color-primary-light);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
 .export-option__icon {

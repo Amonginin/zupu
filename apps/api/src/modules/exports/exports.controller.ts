@@ -1,4 +1,4 @@
-import { Controller, Get, Headers, Param, Post, StreamableFile, Header } from '@nestjs/common';
+import { Controller, Get, Headers, Param, Post, StreamableFile, Header, Body } from '@nestjs/common';
 import { ExportsService } from './exports.service';
 
 @Controller('exports')
@@ -6,8 +6,8 @@ export class ExportsController {
   constructor(private readonly exportsService: ExportsService) {}
 
   @Post()
-  create(@Headers('x-family-id') familyId = 'demo-family') {
-    return this.exportsService.createTask(familyId);
+  create(@Headers('x-family-id') familyId = 'demo-family', @Body('type') type?: string) {
+    return this.exportsService.createTask(familyId, type);
   }
 
   @Get(':id')

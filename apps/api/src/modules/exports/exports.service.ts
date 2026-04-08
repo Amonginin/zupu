@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import { PDFDocument, StandardFonts, rgb, PDFFont, PDFPage } from 'pdf-lib';
 
 const fontkit = require('@pdf-lib/fontkit');
 import { FamiliesService } from '../../infra/families/families.service';
@@ -20,11 +20,12 @@ export class ExportsService {
     private readonly storageService: StorageService,
   ) {}
 
-  async createTask(familyCode: string) {
+  async createTask(familyCode: string, type: string = 'quick_table') {
     const family = await this.familiesService.resolveByCode(familyCode);
     const task = await this.prisma.exportTask.create({
       data: {
         familyId: family.id,
+        type,
         status: 'pending',
       },
     });
@@ -86,6 +87,9 @@ export class ExportsService {
         where: { familyId: task.familyId },
         orderBy: [{ generation: 'asc' }, { name: 'asc' }],
       });
+      const relations = await this.prisma.relationship.findMany({
+        where: { familyId: task.familyId },
+      });
 
       // 使用 pdf-lib 生成真正的 PDF
       const pdfDoc = await PDFDocument.create();
@@ -96,87 +100,30 @@ export class ExportsService {
       const textFont = cjkFont ?? font;
       const supportUnicode = Boolean(cjkFont);
 
-      const pageWidth = 595; // A4 宽度 (pt)
-      const pageHeight = 842; // A4 高度 (pt)
       const margin = 50;
-      const lineHeight = 20;
-      const contentWidth = pageWidth - 2 * margin;
-
+      const pageWidth = 595;
+      const pageHeight = 842;
       let page = pdfDoc.addPage([pageWidth, pageHeight]);
       let y = pageHeight - margin;
 
       // 标题
-      page.drawText('Zupu Export (MVP)', {
-        x: margin,
-        y,
-        size: 24,
-        font: boldFont,
-        color: rgb(0.1, 0.1, 0.1),
-      });
-      y -= 35;
-
-      // 家族信息
-      page.drawText(`Family: ${this.normalizePdfText(task.family.name || task.family.code, supportUnicode)}`, {
-        x: margin,
-        y,
-        size: 12,
-        font: textFont,
-        color: rgb(0.3, 0.3, 0.3),
-      });
-      y -= lineHeight;
-
-      page.drawText(`Export Time: ${new Date().toISOString()}`, {
-        x: margin,
-        y,
-        size: 12,
-        font,
-        color: rgb(0.3, 0.3, 0.3),
-      });
-      y -= lineHeight;
-
-      page.drawText(`Total Members: ${members.length}`, {
-        x: margin,
-        y,
-        size: 12,
-        font,
-        color: rgb(0.3, 0.3, 0.3),
-      });
+      page.drawText('Zupu Export', { x: margin, y, size: 20, font: boldFont, color: rgb(0.1, 0.1, 0.1) });
       y -= 30;
 
-      // 表头
-      page.drawText('Name', { x: margin, y, size: 11, font: boldFont });
-      page.drawText('Gen', { x: margin + 180, y, size: 11, font: boldFont });
-      page.drawText('Alias', { x: margin + 230, y, size: 11, font: boldFont });
-      page.drawText('Status', { x: margin + 350, y, size: 11, font: boldFont });
-      y -= 5;
-
-      // 分隔线
-      page.drawLine({
-        start: { x: margin, y },
-        end: { x: pageWidth - margin, y },
-        thickness: 0.5,
-        color: rgb(0.7, 0.7, 0.7),
+      page.drawText(`Family: ${this.normalizePdfText(task.family.name || task.family.code, supportUnicode)} - Type: ${task.type}`, {
+        x: margin, y, size: 12, font: textFont, color: rgb(0.3, 0.3, 0.3),
       });
-      y -= lineHeight;
+      y -= 20;
 
-      // 成员列表
-      for (const m of members) {
-        if (y < margin + 30) {
-          // 换页
-          page = pdfDoc.addPage([pageWidth, pageHeight]);
-          y = pageHeight - margin;
-        }
-
-        const name = this.truncateText(this.normalizePdfText(m.name, supportUnicode), 25);
-        const gen = m.generation != null ? String(m.generation) : '-';
-        const alias = this.truncateText(this.normalizePdfText(m.alias || '-', supportUnicode), 15);
-        const status = m.isLiving ? 'Living' : 'Deceased';
-
-        page.drawText(name, { x: margin, y, size: 10, font: textFont });
-        page.drawText(gen, { x: margin + 180, y, size: 10, font: textFont });
-        page.drawText(alias, { x: margin + 230, y, size: 10, font: textFont });
-        page.drawText(status, { x: margin + 350, y, size: 10, font });
-        y -= lineHeight;
+      // 根据不同类型渲染不同模版
+      if (task.type === 'quick_table') {
+        this.renderQuickTable({ pdfDoc, page, font: boldFont, textFont, supportUnicode, margin, y, members });
+      } else if (task.type === 'drop_line') {
+        this.renderDropLine({ pdfDoc, page, font: boldFont, textFont, supportUnicode, margin, y, members, relations });
+      } else if (task.type === 'biography') {
+        this.renderBiography({ pdfDoc, page, font: boldFont, textFont, supportUnicode, margin, y, members, relations });
+      } else {
+        this.renderQuickTable({ pdfDoc, page, font: boldFont, textFont, supportUnicode, margin, y, members });
       }
 
       const pdfBytes = await pdfDoc.save();
@@ -197,6 +144,150 @@ export class ExportsService {
     }
   }
 
+  private renderQuickTable(ctx: any) {
+    let { pdfDoc, page, textFont, supportUnicode, margin, y, members } = ctx;
+    const pageWidth = 595;
+    const pageHeight = 842;
+    const lineHeight = 20;
+
+    page.drawText('Name', { x: margin, y, size: 11, font: ctx.font });
+    page.drawText('Gen', { x: margin + 180, y, size: 11, font: ctx.font });
+    page.drawText('Alias', { x: margin + 230, y, size: 11, font: ctx.font });
+    page.drawText('Status', { x: margin + 350, y, size: 11, font: ctx.font });
+    y -= 5;
+    page.drawLine({ start: { x: margin, y }, end: { x: pageWidth - margin, y }, thickness: 0.5 });
+    y -= lineHeight;
+
+    for (const m of members) {
+      if (y < margin + 30) {
+        page = pdfDoc.addPage([pageWidth, pageHeight]);
+        y = pageHeight - margin;
+      }
+      const name = this.truncateText(this.normalizePdfText(m.name, supportUnicode), 25);
+      const gen = m.generation != null ? String(m.generation) : '-';
+      const alias = this.truncateText(this.normalizePdfText(m.alias || '-', supportUnicode), 15);
+      const status = m.isLiving ? 'Living' : 'Deceased';
+
+      page.drawText(name, { x: margin, y, size: 10, font: textFont });
+      page.drawText(gen, { x: margin + 180, y, size: 10, font: textFont });
+      page.drawText(alias, { x: margin + 230, y, size: 10, font: textFont });
+      page.drawText(status, { x: margin + 350, y, size: 10, font: textFont });
+      y -= lineHeight;
+    }
+  }
+
+  private renderDropLine(ctx: any) {
+    let { pdfDoc, page, textFont, supportUnicode, margin, y, members, relations } = ctx;
+    const pageWidth = 595;
+    const pageHeight = 842;
+    const blockHeight = 40;
+
+    // 简单吊线：按世代成行排布，体现父辈与后代。同一代内排在一行，排满换下一代或者换页
+    // 这里做最简单的扁平化网格布局作为简化版的吊线图演示
+    const genMap = new Map<number, any[]>();
+    for (const m of members) {
+      const g = m.generation || 0;
+      if (!genMap.has(g)) genMap.set(g, []);
+      genMap.get(g)!.push(m);
+    }
+    const gens = Array.from(genMap.keys()).sort((a, b) => a - b);
+
+    for (const g of gens) {
+      const gMembers = genMap.get(g)!;
+      if (y < margin + 60) {
+        page = pdfDoc.addPage([pageWidth, pageHeight]);
+        y = pageHeight - margin;
+      }
+
+      page.drawText(`第 ${g} 世`, { x: margin, y, size: 12, font: ctx.font });
+      y -= 10;
+      
+      let curX = margin;
+      for (const m of gMembers) {
+        if (curX > pageWidth - margin - 40) {
+          curX = margin;
+          y -= blockHeight;
+          if (y < margin + 20) {
+            page = pdfDoc.addPage([pageWidth, pageHeight]);
+            y = pageHeight - margin;
+          }
+        }
+        
+        // Find father if possible
+        const parentRel = relations.find((r: any) => r.type === 'parent_of' && r.toId === m.id);
+        const parentStr = parentRel ? '|' : '';
+
+        page.drawText(parentStr, { x: curX + 10, y: y + 8, size: 10, font: textFont });
+        
+        const nameNode = this.truncateText(this.normalizePdfText(m.name, supportUnicode), 6);
+        page.drawText(nameNode, { x: curX, y: y - 10, size: 10, font: textFont });
+        page.drawRectangle({
+          x: curX - 2,
+          y: y - 12,
+          width: 30,
+          height: 14,
+          borderColor: rgb(0,0,0),
+          borderWidth: 1,
+        });
+
+        curX += 45;
+      }
+      y -= blockHeight * 1.5;
+    }
+  }
+
+  private renderBiography(ctx: any) {
+    let { pdfDoc, page, textFont, supportUnicode, margin, y, members, relations } = ctx;
+    const pageWidth = 595;
+    const pageHeight = 842;
+    const lineHeight = 16;
+    
+    // 行传体: 每人一段落
+    page.drawText('欧式行传 详录', { x: margin, y, size: 14, font: ctx.font });
+    y -= 20;
+
+    for (const m of members) {
+      if (y < margin + 50) {
+        page = pdfDoc.addPage([pageWidth, pageHeight]);
+        y = pageHeight - margin;
+      }
+
+      // 提取生父
+      const parentRel = relations.find((r: any) => r.type === 'parent_of' && r.toId === m.id);
+      let fatherName = '未知';
+      if (parentRel) {
+        const father = members.find((x: any) => x.id === parentRel.fromId);
+        if (father) fatherName = father.name;
+      }
+
+      // 提取配偶
+      const spouseRel = relations.find((r: any) => r.type === 'spouse_of' && (r.fromId === m.id || r.toId === m.id));
+      let spouseName = '无配';
+      if (spouseRel) {
+        const sid = spouseRel.fromId === m.id ? spouseRel.toId : spouseRel.fromId;
+        const spouse = members.find((x: any) => x.id === sid);
+        if (spouse) spouseName = spouse.name;
+      }
+
+      const mGen = m.generation != null ? `第${m.generation}世` : '无世代';
+      const mName = this.normalizePdfText(m.name, supportUnicode);
+      const mAlias = this.normalizePdfText(m.alias || '无字号', supportUnicode);
+      const stats = m.isLiving ? '存' : '殁';
+      const intro = this.truncateText(this.normalizePdfText(m.notes || '暂无生平传记记录', supportUnicode), 60);
+      
+      const text1 = `${mGen} [${mName}] 字号: ${mAlias} - 系 [${this.normalizePdfText(fatherName, supportUnicode)}] 之子`;
+      const text2 = `配偶: ${this.normalizePdfText(spouseName, supportUnicode)} | 状态: ${stats}`;
+      const text3 = `生平/行传: ${intro}`;
+
+      page.drawText(text1, { x: margin, y, size: 11, font: textFont });
+      y -= lineHeight;
+      page.drawText(text2, { x: margin + 15, y, size: 10, font: textFont, color: rgb(0.3, 0.3, 0.3) });
+      y -= lineHeight;
+      page.drawText(text3, { x: margin + 15, y, size: 10, font: textFont });
+      y -= lineHeight * 1.5;
+    }
+  }
+
   private async tryLoadCjkFont(pdfDoc: PDFDocument) {
     const candidates = [
       process.env.EXPORT_PDF_FONT_PATH,
@@ -208,9 +299,7 @@ export class ExportsService {
 
     for (const fontPath of candidates) {
       try {
-        if (!fs.existsSync(fontPath)) {
-          continue;
-        }
+        if (!fs.existsSync(fontPath)) continue;
         const fontBytes = fs.readFileSync(fontPath);
         this.logger.log(`导出使用字体: ${fontPath}`);
         return await pdfDoc.embedFont(fontBytes);
@@ -218,16 +307,11 @@ export class ExportsService {
         this.logger.warn(`字体加载失败(${fontPath}): ${(error as Error).message}`);
       }
     }
-
-    this.logger.warn('未找到可用中文字体，导出将回退为 ASCII 文本');
     return null;
   }
 
   private normalizePdfText(text: string, supportUnicode: boolean): string {
-    if (supportUnicode) {
-      return text;
-    }
-    // StandardFonts 只能安全编码 ASCII，避免中文导致导出失败
+    if (supportUnicode) return text;
     return text.replace(/[^\x20-\x7E]/g, '?');
   }
 

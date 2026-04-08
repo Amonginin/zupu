@@ -3,6 +3,7 @@ import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { MembersService } from './members.service';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { FamiliesService } from '../../infra/families/families.service';
+import { AuditsService } from '../audits/audits.service';
 
 describe('MembersService', () => {
   let service: MembersService;
@@ -29,12 +30,17 @@ describe('MembersService', () => {
     resolveByCode: jest.fn().mockResolvedValue(mockFamily),
   };
 
+  const mockAuditsService = {
+    create: jest.fn().mockResolvedValue({}),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         MembersService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: FamiliesService, useValue: mockFamiliesService },
+        { provide: AuditsService, useValue: mockAuditsService },
       ],
     }).compile();
 
@@ -78,7 +84,7 @@ describe('MembersService', () => {
   });
 
   describe('create', () => {
-    it('should create a new member', async () => {
+    it('should create a new member and log audit', async () => {
       const createDto = { name: 'New Member', generation: 5, isLiving: true };
       mockPrisma.member.findMany.mockResolvedValue([]);
       mockPrisma.member.create.mockResolvedValue({
@@ -87,10 +93,19 @@ describe('MembersService', () => {
         familyId: 'family-1',
       });
 
-      const result = await service.create('test-family', createDto);
+      const result = await service.create('test-family', createDto, 'user-1');
 
       expect(result.name).toBe('New Member');
       expect(result.warning).toBeUndefined();
+      // v0.2: 验证审计日志被调用
+      expect(mockAuditsService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          familyId: 'family-1',
+          userId: 'user-1',
+          action: 'member_created',
+          targetType: 'Member',
+        }),
+      );
     });
 
     it('should warn about duplicates', async () => {
@@ -109,15 +124,23 @@ describe('MembersService', () => {
   });
 
   describe('delete', () => {
-    it('should delete member and relationships', async () => {
+    it('should delete member and relationships, and log audit', async () => {
       mockPrisma.member.findFirst.mockResolvedValue({ id: 'm1', name: 'To Delete' });
       mockPrisma.relationship.deleteMany.mockResolvedValue({ count: 2 });
       mockPrisma.member.delete.mockResolvedValue({});
 
-      const result = await service.delete('test-family', 'm1');
+      const result = await service.delete('test-family', 'm1', 'user-1');
 
       expect(result.deleted).toBe(true);
       expect(mockPrisma.relationship.deleteMany).toHaveBeenCalled();
+      // v0.2: 验证审计日志被调用
+      expect(mockAuditsService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'member_deleted',
+          targetType: 'Member',
+          targetId: 'm1',
+        }),
+      );
     });
 
     it('should throw NotFoundException if member not found', async () => {
@@ -128,10 +151,10 @@ describe('MembersService', () => {
   });
 
   describe('createRelation', () => {
-    it('should create a relationship', async () => {
+    it('should create a relationship and log audit', async () => {
       mockPrisma.member.findFirst
-        .mockResolvedValueOnce({ id: 'm1' })
-        .mockResolvedValueOnce({ id: 'm2' });
+        .mockResolvedValueOnce({ id: 'm1', name: 'Parent' })
+        .mockResolvedValueOnce({ id: 'm2', name: 'Child' });
       mockPrisma.relationship.findFirst.mockResolvedValue(null);
       mockPrisma.relationship.create.mockResolvedValue({
         id: 'rel-1',
@@ -143,9 +166,16 @@ describe('MembersService', () => {
       const result = await service.createRelation('test-family', 'm1', {
         toMemberId: 'm2',
         type: 'parent_of',
-      });
+      }, 'user-1');
 
       expect(result.type).toBe('parent_of');
+      // v0.2: 验证审计日志被调用
+      expect(mockAuditsService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'relation_created',
+          targetType: 'Relationship',
+        }),
+      );
     });
 
     it('should throw if creating self-relation', async () => {
